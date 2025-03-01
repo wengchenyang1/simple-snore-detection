@@ -33,7 +33,14 @@ class SnoreDetectionModel(nn.Module):
         audio_length_sec = self.feature_config["audio_length_sec"]
         window_size_ms = self.feature_config["window_size_ms"]
         window_step_ms = self.feature_config["window_step_ms"]
-        n_mfcc = self.feature_config["n_mfcc"]
+        method = self.feature_config.get("method", "mfcc")
+
+        if method == "mfcc":
+            n_features = self.feature_config["n_mfcc"]
+        elif method == "mel_spectrogram":
+            n_features = self.feature_config["n_mels"]
+        else:
+            raise ValueError(f"Unsupported feature extraction method: {method}")
 
         window_size_samples = int(sample_rate * window_size_ms / 1000)
         window_step_samples = int(sample_rate * window_step_ms / 1000)
@@ -41,7 +48,7 @@ class SnoreDetectionModel(nn.Module):
         num_frames = (
             clip_length_samples - window_size_samples
         ) // window_step_samples + 1
-        self.input_shape = (1, n_mfcc, num_frames)
+        self.input_shape = (1, n_features, num_frames)
 
     def _build_conv_network(self):
         """Construct the convolutional layers up to the flatten operation."""
