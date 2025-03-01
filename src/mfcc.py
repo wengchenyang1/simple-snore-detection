@@ -3,6 +3,8 @@ import librosa
 import numpy as np
 import torch
 
+MS_PER_SEC = 1000
+
 
 def extract_mfcc_features(audio_path, config):
     """
@@ -30,15 +32,13 @@ def extract_mfcc_features(audio_path, config):
         y=audio,
         sr=sample_rate,
         n_mfcc=n_mfcc,
-        n_fft=int(sample_rate * window_size_ms / 1000),
-        hop_length=int(sample_rate * window_step_ms / 1000),
+        n_fft=int(sample_rate * window_size_ms / MS_PER_SEC),
+        hop_length=int(sample_rate * window_step_ms / MS_PER_SEC),
     )
 
     # Convert MFCC to decibel scale
     mfcc_db = librosa.amplitude_to_db(mfcc, ref=np.max)
 
-    # Convert to PyTorch tensor and add channel dimension
-    mfcc_tensor = torch.tensor(mfcc_db, dtype=torch.float32).unsqueeze(
-        0
-    )  # Shape: (1, n_mfcc, num_frames)
+    # Convert to PyTorch tensor and add channel dimension, shape: (1, n_mfcc, num_frames)
+    mfcc_tensor = torch.tensor(mfcc_db, dtype=torch.float32).unsqueeze(0)
     return mfcc_tensor

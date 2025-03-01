@@ -1,4 +1,5 @@
 # Copyright (c) 2025, SountIO
+import gc
 import json
 import os
 import random
@@ -44,17 +45,7 @@ class SnoreDataset(Dataset):
         mfcc = self._normalize(mfcc)
         return mfcc, label
 
-    def apply_augmentation(self, mfcc, label):
-        """
-        Apply augmentation by mixing snore and non-snore audio.
-
-        Args:
-            mfcc (torch.Tensor): MFCC features.
-            label (int): Original label (1 for snore, 0 for no snore).
-
-        Returns:
-            torch.Tensor: Augmented MFCC features.
-        """
+    def _apply_augmentation(self, mfcc, label):
         if label == 1:  # Snore
             non_snore_files = [f for f, l in zip(self.files, self.labels) if l == 0]
             if non_snore_files:
@@ -77,29 +68,73 @@ class SnoreDataset(Dataset):
 
 def _train_model(model, train_loader, val_loader, epochs=10, learning_rate=0.001):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device is {device}!")
     model.to(device)
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-4)
 
     for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for mfcc_batch, labels in train_loader:
-            mfcc_batch, labels = mfcc_batch.to(device), labels.to(device)
-            optimizer.zero_grad()
-            outputs = model(mfcc_batch)
-            loss = criterion(outputs.squeeze(), labels.float())
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-
-        train_loss = running_loss / len(train_loader)
-        val_loss = _evaluate_model(model, val_loader, criterion, device)
+        train_loss, train_accuracy = _train_one_epoch(
+            model, train_loader, criterion, optimizer, device
+        )
+        val_loss, val_accuracy = _evaluate_model(model, val_loader, criterion, device)
 
         print(
-            f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}"
+            f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, "
+            f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}"
         )
 
+    _save_model(model, epochs)
+
+
+def _train_one_epoch(model, dataloader, criterion, optimizer, device):
+    model.train()
+    running_loss = 0.0
+    correct_predictions = 0
+    total_samples = 0
+
+    for mfcc_batch, labels in dataloader:
+        mfcc_batch, labels = mfcc_batch.to(device), labels.to(device)
+        optimizer.zero_grad()
+        outputs = model(mfcc_batch)
+        loss = criterion(outputs.squeeze(), labels.float())
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+
+        predictions = (outputs.squeeze() > 0.5).float()
+        correct_predictions += (predictions == labels).sum().item()
+        total_samples += labels.size(0)
+
+    epoch_loss = running_loss / len(dataloader)
+    epoch_accuracy = correct_predictions / total_samples
+    return epoch_loss, epoch_accuracy
+
+
+def _evaluate_model(model, dataloader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    correct_predictions = 0
+    total_samples = 0
+
+    with torch.no_grad():
+        for mfcc_batch, labels in dataloader:
+            mfcc_batch, labels = mfcc_batch.to(device), labels.to(device)
+            outputs = model(mfcc_batch)
+            loss = criterion(outputs.squeeze(), labels.float())
+            running_loss += loss.item()
+
+            predictions = (outputs.squeeze() > 0.5).float()
+            correct_predictions += (predictions == labels).sum().item()
+            total_samples += labels.size(0)
+
+    epoch_loss = running_loss / len(dataloader)
+    epoch_accuracy = correct_predictions / total_samples
+    return epoch_loss, epoch_accuracy
+
+
+def _save_model(model, epochs):
     if not os.path.exists(CKPT_DIR):
         os.makedirs(CKPT_DIR)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -110,16 +145,16 @@ def _train_model(model, train_loader, val_loader, epochs=10, learning_rate=0.001
     print(f"Model saved to {ckpt_path}")
 
 
-def _evaluate_model(model, dataloader, criterion, device):
-    model.eval()
-    running_loss = 0.0
-    with torch.no_grad():
-        for mfcc_batch, labels in dataloader:
-            mfcc_batch, labels = mfcc_batch.to(device), labels.to(device)
-            outputs = model(mfcc_batch)
-            loss = criterion(outputs.squeeze(), labels.float())
-            running_loss += loss.item()
-    return running_loss / len(dataloader)
+def _cleanup_resources():
+    gc.collect()
+
+    # If CUDA is available, clear the GPU memory cache
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()  # Ensure all CUDA operations are completed
+        print("CUDA resources cleared.")
+    else:
+        print("No CUDA device available, skipping CUDA cleanup.")
 
 
 def main():
@@ -144,6 +179,8 @@ def main():
     _train_model(
         model, train_loader, val_loader, epochs=num_epochs, learning_rate=learning_rate
     )
+
+    _cleanup_resources()
 
 
 if __name__ == "__main__":
