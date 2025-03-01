@@ -1,0 +1,12 @@
+[MESSAGES CONTROL]
+disable=C0116,E1101,W0718,C0114,C0115,R0914
+
+[REPORTS]
+# Set the output format. Available formats are text, parseable, colorized, json and msvs (visual studio).
+output-format=text
+
+[FORMAT]
+max-line-length = 120
+
+# Tells whether to display a full report or only the messages
+reports=no

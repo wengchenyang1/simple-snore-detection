@@ -1,0 +1,3 @@
+[submodule "premerge"]
+	path = premerge
+	url = https://github.com/wengchenyang1/premerge.git
