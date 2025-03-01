@@ -1,5 +1,6 @@
 # Copyright (c) 2025, SountIO
 import librosa
+import numpy as np
 import torch
 
 
@@ -16,13 +17,13 @@ def extract_mfcc_features(audio_path, config):
     """
     # Extract feature extraction parameters
     sample_rate = config["feature_extraction"]["sample_rate"]
-    audio_length = config["feature_extraction"]["audio_length"]
+    audio_length_sec = config["feature_extraction"]["audio_length_sec"]
     n_mfcc = config["feature_extraction"]["n_mfcc"]
     window_size_ms = config["feature_extraction"]["window_size_ms"]
     window_step_ms = config["feature_extraction"]["window_step_ms"]
 
     # Load the audio file
-    audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length)
+    audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length_sec)
 
     # Compute MFCC features
     mfcc = librosa.feature.mfcc(
@@ -33,8 +34,11 @@ def extract_mfcc_features(audio_path, config):
         hop_length=int(sample_rate * window_step_ms / 1000),
     )
 
+    # Convert MFCC to decibel scale
+    mfcc_db = librosa.amplitude_to_db(mfcc, ref=np.max)
+
     # Convert to PyTorch tensor and add channel dimension
-    mfcc_tensor = torch.tensor(mfcc, dtype=torch.float32).unsqueeze(
+    mfcc_tensor = torch.tensor(mfcc_db, dtype=torch.float32).unsqueeze(
         0
     )  # Shape: (1, n_mfcc, num_frames)
     return mfcc_tensor
