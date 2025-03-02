@@ -77,25 +77,18 @@ def _extract_mel_spectrogram(audio, config):
         hop_length=int(sample_rate * window_step_ms / MS_PER_SEC),
     )
 
-    mel_spectrogram_db = librosa.amplitude_to_db(mel_spectrogram, ref=np.max)
-    mel_spectrogram_tensor = torch.tensor(
-        mel_spectrogram_db, dtype=torch.float32
-    ).unsqueeze(0)
-    return _normalize_db(mel_spectrogram_tensor)
+    if np.all(mel_spectrogram == 0):
+        mel_spectrogram_tensor = torch.zeros(
+            (1, n_mels, mel_spectrogram.shape[1]), dtype=torch.float32
+        )
+    else:
+        mel_spectrogram_db = librosa.amplitude_to_db(mel_spectrogram, ref=np.max)
+        mel_spectrogram_tensor = torch.tensor(
+            mel_spectrogram_db, dtype=torch.float32
+        ).unsqueeze(0)
+        mel_spectrogram_tensor = _normalize_db(mel_spectrogram_tensor)
 
-
-def _normalize_audio(audio):
-    """
-    Normalize the audio to range from -1 to 1.
-
-    Args:
-        audio (np.ndarray): Input audio signal.
-
-    Returns:
-        np.ndarray: Normalized audio signal.
-    """
-    max_abs_value = np.max(np.abs(audio))
-    return audio / max_abs_value
+    return mel_spectrogram_tensor
 
 
 def _normalize_db(tensor):
@@ -164,6 +157,9 @@ def _example_usage():
         os.path.join(TRAIN_DIR, "snore", f)
         for f in os.listdir(os.path.join(TRAIN_DIR, "snore"))[:4]
     ]
+
+    print(no_snore_files)
+    print(snore_files)
 
     _plot_audio_features(no_snore_files, CONFIG_PATH, "No Snore")
     _plot_audio_features(snore_files, CONFIG_PATH, "Snore")
