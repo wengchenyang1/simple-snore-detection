@@ -53,10 +53,10 @@ class AudioFeatureExtractor:
         # Extract features.
         if config.method == "mfcc":
             return self._extract_mfcc_features(audio_array)
-        elif config.method == "mel_spectrogram":
+        if config.method == "mel_spectrogram":
             return self._extract_mel_spectrogram(audio_array)
-        else:
-            raise ValueError(f"Unsupported feature extraction method: {config.method}")
+
+        raise ValueError(f"Unsupported feature extraction method: {config.method}")
 
     def get_feature_from_file(self, audio_path: str) -> torch.Tensor:
         """
@@ -64,7 +64,17 @@ class AudioFeatureExtractor:
         """
         audio_length_sec = self.config.audio_length_sec
         sample_rate = self.config.sample_rate
-        audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length_sec)
+        audio, sr = librosa.load(audio_path, sr=None)
+
+        if len(audio) < sr * audio_length_sec:
+            raise ValueError(
+                "Audio length is shorter than the required length in config."
+            )
+
+        if sr != sample_rate:
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=sample_rate)
+
+        audio = self._ensure_correct_length(audio, sample_rate)
 
         if self.config.method == "mfcc":
             return self._extract_mfcc_features(audio)

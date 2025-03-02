@@ -91,6 +91,74 @@ class TestAudioFeatureExtractor(unittest.TestCase):
     def test_get_feature_from_file_mel_spectrogram(self):
         self._test_get_feature("mel_spectrogram", from_file=True)
 
+    def test_get_feature_from_stream_with_different_sample_rate_and_length(self):
+        self.mock_config["method"] = "mfcc"
+        self.mock_get_config.return_value = MagicMock(**self.mock_config)
+        self.extractor = AudioFeatureExtractor()
+
+        different_sample_rate = 22050
+        different_audio_length_sec = 2
+        audio_data = self._generate_audio_data(
+            different_sample_rate, different_audio_length_sec
+        )
+
+        features = self.extractor.get_feature_from_stream(
+            audio_data, different_sample_rate
+        )
+        self.assertIsInstance(features, torch.Tensor)
+        self.assertEqual(features.shape[1], self.mock_config["n_mfcc"])
+
+        expected_frames = self._calculate_expected_frames(
+            self.mock_config["sample_rate"],
+            self.mock_config["audio_length_sec"],
+            self.mock_config["window_size_ms"],
+            self.mock_config["window_step_ms"],
+        )
+        self.assertEqual(features.shape[2], expected_frames)
+
+    def test_get_feature_from_file_with_different_sample_rate_and_length(self):
+        self.mock_config["method"] = "mfcc"
+        self.mock_get_config.return_value = MagicMock(**self.mock_config)
+        self.extractor = AudioFeatureExtractor()
+
+        different_sample_rate = 22050
+        different_audio_length_sec = 2
+        audio_data = self._generate_audio_data(
+            different_sample_rate, different_audio_length_sec
+        )
+
+        # Calculate expected frames based on config (not the different sample rate/length)
+        expected_frames = self._calculate_expected_frames(
+            self.mock_config["sample_rate"],
+            self.mock_config["audio_length_sec"],
+            self.mock_config["window_size_ms"],
+            self.mock_config["window_step_ms"],
+        )
+
+        audio_path = "path/to/sample_audio.wav"
+        with patch("librosa.load", return_value=(audio_data, different_sample_rate)):
+            features = self.extractor.get_feature_from_file(audio_path)
+        self.assertIsInstance(features, torch.Tensor)
+        self.assertEqual(features.shape[1], self.mock_config["n_mfcc"])
+        self.assertEqual(features.shape[2], expected_frames)
+
+    def test_get_feature_from_file_with_short_audio(self):
+        self.mock_config["method"] = "mfcc"
+        self.mock_get_config.return_value = MagicMock(**self.mock_config)
+        self.extractor = AudioFeatureExtractor()
+
+        short_audio_length_sec = 0.5
+        audio_data = self._generate_audio_data(
+            self.mock_config["sample_rate"], short_audio_length_sec
+        )
+
+        audio_path = "path/to/sample_audio.wav"
+        with patch(
+            "librosa.load", return_value=(audio_data, self.mock_config["sample_rate"])
+        ):
+            with self.assertRaises(ValueError):
+                self.extractor.get_feature_from_file(audio_path)
+
 
 if __name__ == "__main__":
     unittest.main()
