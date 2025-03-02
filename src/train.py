@@ -9,7 +9,8 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 from src.audiofeature import get_audio_feature
-from src.model import CONFIG_PATH, SnoreDetectionModel
+from src.config import FeatureConfig, ModelConfig, TrainingConfig, copy_config_files
+from src.model import SnoreDetectionModel
 
 CKPT_DIR = "ckpt"
 TRAIN_DIR = os.path.join("data", "train")
@@ -17,9 +18,9 @@ VAL_DIR = os.path.join("data", "val")
 
 
 class SnoreDataset(Dataset):
-    def __init__(self, data_dir: str, config_path: str):
+    def __init__(self, data_dir: str, feature_config: FeatureConfig):
         self.data_dir = data_dir
-        self.config_path = config_path
+        self.feature_config = feature_config
         self.files = []
         self.labels = []
         for label in ["snore", "no_snore"]:
@@ -35,7 +36,7 @@ class SnoreDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         audio_path = self.files[idx]
         label = self.labels[idx]
-        audio_feature = get_audio_feature(audio_path, self.config_path)
+        audio_feature = get_audio_feature(audio_path)
 
         return audio_feature, label
 
@@ -43,17 +44,11 @@ class SnoreDataset(Dataset):
 class TrainingDetails:
     def __init__(
         self,
-        batch_size: int,
-        epochs: int,
-        learning_rate: float,
         train_loss: float,
         train_accuracy: float,
         val_loss: float,
         val_accuracy: float,
     ):
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.learning_rate = learning_rate
         self.train_loss = train_loss
         self.train_accuracy = train_accuracy
         self.val_loss = val_loss
@@ -61,9 +56,6 @@ class TrainingDetails:
 
     def to_dict(self) -> dict:
         return {
-            "batch_size": self.batch_size,
-            "epochs": self.epochs,
-            "learning_rate": self.learning_rate,
             "train_loss": self.train_loss,
             "train_accuracy": self.train_accuracy,
             "val_loss": self.val_loss,
@@ -133,7 +125,6 @@ def _evaluate_model(
 def _save_model(
     model: torch.nn.Module,
     epochs: int,
-    config_path: str,
     training_details: TrainingDetails,
 ) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -145,18 +136,10 @@ def _save_model(
     torch.save(model.state_dict(), ckpt_path)
     print(f"Model saved to folder: {subfolder}")
 
-    config_dest_path = os.path.join(subfolder, "config.json")
-    _copy_config_file(config_path, config_dest_path)
+    copy_config_files(subfolder)
 
     details_path = os.path.join(subfolder, "training_details.json")
     _save_training_details(details_path, training_details)
-
-
-def _copy_config_file(src_path: str, dest_path: str) -> None:
-    with open(src_path, "r", encoding="utf-8") as src_file:
-        config_data = src_file.read()
-    with open(dest_path, "w", encoding="utf-8") as dest_file:
-        dest_file.write(config_data)
 
 
 def _save_training_details(
@@ -192,16 +175,13 @@ def _train_model(
         )
 
     training_details = TrainingDetails(
-        batch_size=train_loader.batch_size,
-        epochs=epochs,
-        learning_rate=learning_rate,
         train_loss=train_loss,
         train_accuracy=train_accuracy,
         val_loss=val_loss,
         val_accuracy=val_accuracy,
     )
 
-    _save_model(model, epochs, CONFIG_PATH, training_details)
+    _save_model(model, epochs, training_details)
 
 
 def _cleanup_resources() -> None:
@@ -217,25 +197,34 @@ def _cleanup_resources() -> None:
 
 
 def main() -> None:
-    batch_size = 8
-    num_epochs = 2
-    learning_rate = 0.001
-    num_workers = 4
+    feature_config = FeatureConfig.get_config()
+    model_config = ModelConfig.get_config()
+    training_config = TrainingConfig.get_config()
 
     _cleanup_resources()
 
-    model = SnoreDetectionModel(CONFIG_PATH)
-    train_dataset = SnoreDataset(TRAIN_DIR, CONFIG_PATH)
-    val_dataset = SnoreDataset(VAL_DIR, CONFIG_PATH)
+    model = SnoreDetectionModel(model_config, feature_config)
+    train_dataset = SnoreDataset(TRAIN_DIR, feature_config)
+    val_dataset = SnoreDataset(VAL_DIR, feature_config)
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        train_dataset,
+        batch_size=training_config.batch_size,
+        shuffle=True,
+        num_workers=training_config.num_workers,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        val_dataset,
+        batch_size=training_config.batch_size,
+        shuffle=False,
+        num_workers=training_config.num_workers,
     )
 
     _train_model(
-        model, train_loader, val_loader, epochs=num_epochs, learning_rate=learning_rate
+        model,
+        train_loader,
+        val_loader,
+        epochs=training_config.num_epochs,
+        learning_rate=training_config.learning_rate,
     )
 
     _cleanup_resources()

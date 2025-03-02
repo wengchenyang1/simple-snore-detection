@@ -1,0 +1,9 @@
+{
+    "sample_rate": 16000,
+    "audio_length_sec": 1,
+    "n_mfcc": 40,
+    "n_mels": 128,
+    "window_size_ms": 30,
+    "window_step_ms": 20,
+    "method": "mfcc"
+}

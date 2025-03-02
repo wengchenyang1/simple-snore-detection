@@ -1,22 +1,11 @@
 {
-    "feature_extraction": {
-        "method": "mfcc",
-        "sample_rate": 16000,
-        "audio_length_sec": 1,
-        "n_mfcc": 40,
-        "n_mels": 128,
-        "window_size_ms": 30,
-        "window_step_ms": 20
-    },
-    "model": {
-        "layers": [
-            {"type": "conv2d", "filters": 16, "kernel_size": [3, 3], "activation": "relu"},
-            {"type": "maxpool2d", "pool_size": [2, 2]},
-            {"type": "conv2d", "filters": 32, "kernel_size": [3, 3], "activation": "relu"},
-            {"type": "maxpool2d", "pool_size": [2, 2]},
-            {"type": "flatten"},
-            {"type": "dense", "units": 128, "activation": "relu"},
-            {"type": "dense", "units": 1, "activation": "sigmoid"}
-        ]
-    }
+    "layers": [
+        {"type": "conv2d", "filters": 16, "kernel_size": [3, 3], "activation": "relu"},
+        {"type": "maxpool2d", "pool_size": [2, 2]},
+        {"type": "conv2d", "filters": 32, "kernel_size": [3, 3], "activation": "relu"},
+        {"type": "maxpool2d", "pool_size": [2, 2]},
+        {"type": "flatten"},
+        {"type": "dense", "units": 128, "activation": "relu"},
+        {"type": "dense", "units": 1, "activation": "sigmoid"}
+    ]
 }

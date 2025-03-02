@@ -1,38 +1,22 @@
 # Copyright (c) 2025, SountIO
-import json
 from typing import List
 
 import librosa
 import numpy as np
 import torch
 
+from src.config import FeatureConfig
+
 MS_PER_SEC = 1000
 
 
-class FeatureConfig:
-    def __init__(self, config: dict):
-        self.sample_rate: int = config["feature_extraction"]["sample_rate"]
-        self.audio_length_sec: int = config["feature_extraction"]["audio_length_sec"]
-        self.n_mfcc: int = config["feature_extraction"].get("n_mfcc", 40)
-        self.n_mels: int = config["feature_extraction"].get("n_mels", 128)
-        self.window_size_ms: int = config["feature_extraction"]["window_size_ms"]
-        self.window_step_ms: int = config["feature_extraction"]["window_step_ms"]
-        self.method: str = config["feature_extraction"].get("method", "mfcc")
-
-    @classmethod
-    def from_json(cls, config_path: str) -> "FeatureConfig":
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        return cls(config)
-
-
-def get_audio_feature(audio_path: str, config_path: str) -> torch.Tensor:
+def get_audio_feature(audio_path: str) -> torch.Tensor:
     """
     Get audio features based on the specified feature extraction method in the config.
     Returns:
         torch.Tensor: Extracted audio features.
     """
-    config = FeatureConfig.from_json(config_path)
+    config = FeatureConfig.get_config()
     audio_length_sec = config.audio_length_sec
     sample_rate = config.sample_rate
     audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length_sec)
@@ -108,14 +92,14 @@ def _normalize_db(tensor: torch.Tensor) -> torch.Tensor:
     return (tensor - mean) / std
 
 
-def _plot_audio_features(audio_paths: List[str], config_path: str, title: str) -> None:
+def _plot_audio_features(audio_paths: List[str], title: str) -> None:
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(15, 10))
-    config = FeatureConfig.from_json(config_path)
+    config = FeatureConfig.get_config()
     for i, audio_path in enumerate(audio_paths):
         try:
-            features_tensor = get_audio_feature(audio_path, config_path)
+            features_tensor = get_audio_feature(audio_path)
             features_np = features_tensor.squeeze(0).numpy()
 
             window_step_ms = config.window_step_ms
@@ -148,8 +132,6 @@ def _plot_audio_features(audio_paths: List[str], config_path: str, title: str) -
 def _example_usage() -> None:
     import os
 
-    from model import CONFIG_PATH
-
     train_dir = os.path.join("data", "train")
 
     no_snore_files = [
@@ -164,8 +146,8 @@ def _example_usage() -> None:
     print(no_snore_files)
     print(snore_files)
 
-    _plot_audio_features(no_snore_files, CONFIG_PATH, "No Snore")
-    _plot_audio_features(snore_files, CONFIG_PATH, "Snore")
+    _plot_audio_features(no_snore_files, "No Snore")
+    _plot_audio_features(snore_files, "Snore")
 
 
 if __name__ == "__main__":
