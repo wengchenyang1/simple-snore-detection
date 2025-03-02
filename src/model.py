@@ -109,11 +109,18 @@ class SnoreDetectionModel(nn.Module):
         raise ValueError(f"Unsupported activation: {activation}")
 
     def print_model(self):
-        """Print all model layers in sequential order."""
+        """Print all model layers in sequential order along with parameter counts."""
         print("Model Structure:")
         all_layers = list(self.conv_net) + list(self.dense_net)
+        total_params = 0
+
         for i, layer in enumerate(all_layers):
-            print(f"Layer {i}: {layer}")
+            # Count the number of trainable parameters in this layer
+            layer_params = sum(p.numel() for p in layer.parameters() if p.requires_grad)
+            total_params += layer_params
+            print(f"Layer {i}: {layer} | Parameters: {layer_params:,}")
+
+        print(f"\nTotal Trainable Parameters: {total_params:,}")
 
 
 if __name__ == "__main__":
