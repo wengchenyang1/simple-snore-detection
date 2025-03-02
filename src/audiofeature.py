@@ -21,8 +21,6 @@ class AudioFeatureExtractor:
     def get_feature_from_file(self, audio_path: str) -> torch.Tensor:
         """
         Get audio features based on the specified feature extraction method in the config.
-        Returns:
-            torch.Tensor: Extracted audio features.
         """
         audio_length_sec = self.config.audio_length_sec
         sample_rate = self.config.sample_rate
@@ -41,11 +39,6 @@ class AudioFeatureExtractor:
     ) -> torch.Tensor:
         """
         Get audio features from streaming audio data based on the specified feature extraction method in the config.
-        Args:
-            audio_data (np.ndarray): Audio data as a numpy array.
-            sample_rate (int): Sample rate of the audio data.
-        Returns:
-            torch.Tensor: Extracted audio features.
         """
         if sample_rate != self.config.sample_rate:
             audio_data = librosa.resample(
@@ -53,14 +46,7 @@ class AudioFeatureExtractor:
             )
             sample_rate = self.config.sample_rate
 
-        audio_length_sec = self.config.audio_length_sec
-
-        # Ensure the audio data is the correct length
-        if len(audio_data) > sample_rate * audio_length_sec:
-            audio_data = audio_data[: sample_rate * audio_length_sec]
-        elif len(audio_data) < sample_rate * audio_length_sec:
-            padding = sample_rate * audio_length_sec - len(audio_data)
-            audio_data = np.pad(audio_data, (0, padding), "constant")
+        audio_data = self._ensure_correct_length(audio_data, sample_rate)
 
         if self.config.method == "mfcc":
             return self._extract_mfcc_features(audio_data)
@@ -69,6 +55,20 @@ class AudioFeatureExtractor:
             return self._extract_mel_spectrogram(audio_data)
 
         raise ValueError(f"Unsupported feature extraction method: {self.config.method}")
+
+    def _ensure_correct_length(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """
+        Ensure the audio data is the correct length by truncating or padding.
+        """
+        audio_length_sec = self.config.audio_length_sec
+
+        if len(audio_data) > sample_rate * audio_length_sec:
+            audio_data = audio_data[: sample_rate * audio_length_sec]
+        elif len(audio_data) < sample_rate * audio_length_sec:
+            padding = sample_rate * audio_length_sec - len(audio_data)
+            audio_data = np.pad(audio_data, (0, padding), "constant")
+
+        return audio_data
 
     def _extract_mfcc_features(self, audio: np.ndarray) -> torch.Tensor:
         sample_rate = self.config.sample_rate
@@ -118,12 +118,6 @@ class AudioFeatureExtractor:
     def _normalize_db(self, tensor: torch.Tensor) -> torch.Tensor:
         """
         Normalize the tensor to have zero mean.
-
-        Args:
-            tensor (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Normalized tensor.
         """
         mean = tensor.mean()
         std = tensor.std()
