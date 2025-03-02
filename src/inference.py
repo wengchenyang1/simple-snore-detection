@@ -55,7 +55,7 @@ def infer(
 
 
 def interpret_result(output: float) -> str:
-    threshold = 0.8
+    threshold = 0.6
     result = "Snore" if output > threshold else "No Snore"
     return f"{result} (Score: {output:.2f}, Threshold: {threshold})"
 
