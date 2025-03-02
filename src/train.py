@@ -141,16 +141,13 @@ def _save_model(
     if not os.path.exists(subfolder):
         os.makedirs(subfolder)
 
-    # Save model checkpoint
     ckpt_path = os.path.join(subfolder, f"snore_detection_model_epochs{epochs}.pth")
     torch.save(model.state_dict(), ckpt_path)
     print(f"Model saved to folder: {subfolder}")
 
-    # Copy config file
     config_dest_path = os.path.join(subfolder, "config.json")
     _copy_config_file(config_path, config_dest_path)
 
-    # Save model details
     details_path = os.path.join(subfolder, "training_details.json")
     _save_training_details(details_path, training_details)
 

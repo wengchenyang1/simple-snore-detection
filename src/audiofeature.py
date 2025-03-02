@@ -1,5 +1,6 @@
 # Copyright (c) 2025, SountIO
 import json
+from typing import List
 
 import librosa
 import numpy as np
@@ -9,23 +10,23 @@ MS_PER_SEC = 1000
 
 
 class FeatureConfig:
-    def __init__(self, config):
-        self.sample_rate = config["feature_extraction"]["sample_rate"]
-        self.audio_length_sec = config["feature_extraction"]["audio_length_sec"]
-        self.n_mfcc = config["feature_extraction"].get("n_mfcc", 40)
-        self.n_mels = config["feature_extraction"].get("n_mels", 128)
-        self.window_size_ms = config["feature_extraction"]["window_size_ms"]
-        self.window_step_ms = config["feature_extraction"]["window_step_ms"]
-        self.method = config["feature_extraction"].get("method", "mfcc")
+    def __init__(self, config: dict):
+        self.sample_rate: int = config["feature_extraction"]["sample_rate"]
+        self.audio_length_sec: int = config["feature_extraction"]["audio_length_sec"]
+        self.n_mfcc: int = config["feature_extraction"].get("n_mfcc", 40)
+        self.n_mels: int = config["feature_extraction"].get("n_mels", 128)
+        self.window_size_ms: int = config["feature_extraction"]["window_size_ms"]
+        self.window_step_ms: int = config["feature_extraction"]["window_step_ms"]
+        self.method: str = config["feature_extraction"].get("method", "mfcc")
 
     @classmethod
-    def from_json(cls, config_path):
+    def from_json(cls, config_path: str) -> "FeatureConfig":
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
         return cls(config)
 
 
-def get_audio_feature(audio_path, config_path):
+def get_audio_feature(audio_path: str, config_path: str) -> torch.Tensor:
     """
     Get audio features based on the specified feature extraction method in the config.
     Returns:
@@ -45,7 +46,7 @@ def get_audio_feature(audio_path, config_path):
     raise ValueError(f"Unsupported feature extraction method: {config.method}")
 
 
-def _extract_mfcc_features(audio, config):
+def _extract_mfcc_features(audio: np.ndarray, config: FeatureConfig) -> torch.Tensor:
     sample_rate = config.sample_rate
     n_mfcc = config.n_mfcc
     window_size_ms = config.window_size_ms
@@ -64,7 +65,7 @@ def _extract_mfcc_features(audio, config):
     return _normalize_db(mfcc_tensor)
 
 
-def _extract_mel_spectrogram(audio, config):
+def _extract_mel_spectrogram(audio: np.ndarray, config: FeatureConfig) -> torch.Tensor:
     sample_rate = config.sample_rate
     n_mels = config.n_mels
     window_size_ms = config.window_size_ms
@@ -92,7 +93,7 @@ def _extract_mel_spectrogram(audio, config):
     return mel_spectrogram_tensor
 
 
-def _normalize_db(tensor):
+def _normalize_db(tensor: torch.Tensor) -> torch.Tensor:
     """
     Normalize the tensor to have zero mean.
 
@@ -107,7 +108,7 @@ def _normalize_db(tensor):
     return (tensor - mean) / std
 
 
-def _plot_audio_features(audio_paths, config_path, title):
+def _plot_audio_features(audio_paths: List[str], config_path: str, title: str) -> None:
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(15, 10))
@@ -144,7 +145,7 @@ def _plot_audio_features(audio_paths, config_path, title):
     plt.show()
 
 
-def _example_usage():
+def _example_usage() -> None:
     import os
 
     from model import CONFIG_PATH
