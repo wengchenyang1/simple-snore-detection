@@ -37,12 +37,13 @@ class SnoreDetectionModel(nn.Module):
         else:
             raise ValueError(f"Unsupported feature extraction method: {method}")
 
-        window_size_samples = int(sample_rate * window_size_ms / 1000)
-        window_step_samples = int(sample_rate * window_step_ms / 1000)
+        ms_per_sec = 1000
+        window_size_samples = int(sample_rate * window_size_ms / ms_per_sec)
+        window_step_samples = int(sample_rate * window_step_ms / ms_per_sec)
         clip_length_samples = int(sample_rate * audio_length_sec)
         num_frames = (
             clip_length_samples - window_size_samples
-        ) // window_step_samples + 1
+        ) // window_step_samples + 3
         self.input_shape = (1, n_features, num_frames)
 
     def _build_conv_network(self):
