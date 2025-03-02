@@ -64,10 +64,10 @@ Replace <path_to_model_checkpoint> with the path to your model checkpoint direct
 To perform real-time inference using the microphone, run:
 
 ```Bash
-python -m src.inference --model_path <path_to_model_checkpoint> --realtime --device_index <device_index>
+python -m src.inference --model_path <path_to_model_checkpoint> --realtime
 ```
 
-Replace <path_to_model_checkpoint> with the path to your model checkpoint directory and <device_index> with the index of your input device.
+Replace <path_to_model_checkpoint> with the path to your model checkpoint directory.
 
 ## Run unit tests
 
