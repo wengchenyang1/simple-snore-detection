@@ -1,0 +1,7 @@
+librosa>=0.10.2.post1
+matplotlib>=3.10.1
+numpy>=2.2.3
+pylint>=3.3.4
+sounddevice>=0.5.1
+soundfile>=0.13.1
+torch>=2.6.0
