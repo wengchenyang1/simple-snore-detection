@@ -8,7 +8,7 @@ from typing import Tuple
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from src.audiofeature import get_audio_feature
+from src.audiofeature import AudioFeatureExtractor
 from src.config import FeatureConfig, ModelConfig, TrainingConfig, copy_config_files
 from src.model import SnoreDetectionModel
 
@@ -18,9 +18,9 @@ VAL_DIR = os.path.join("data", "val")
 
 
 class SnoreDataset(Dataset):
-    def __init__(self, data_dir: str, feature_config: FeatureConfig):
+    def __init__(self, data_dir: str):
         self.data_dir = data_dir
-        self.feature_config = feature_config
+        self.audio_feature_extractor = AudioFeatureExtractor()
         self.files = []
         self.labels = []
         for label in ["snore", "no_snore"]:
@@ -36,7 +36,7 @@ class SnoreDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         audio_path = self.files[idx]
         label = self.labels[idx]
-        audio_feature = get_audio_feature(audio_path)
+        audio_feature = self.audio_feature_extractor.get_feature_from_file(audio_path)
 
         return audio_feature, label
 
@@ -204,8 +204,8 @@ def main() -> None:
     _cleanup_resources()
 
     model = SnoreDetectionModel(model_config, feature_config)
-    train_dataset = SnoreDataset(TRAIN_DIR, feature_config)
-    val_dataset = SnoreDataset(VAL_DIR, feature_config)
+    train_dataset = SnoreDataset(TRAIN_DIR)
+    val_dataset = SnoreDataset(VAL_DIR)
     train_loader = DataLoader(
         train_dataset,
         batch_size=training_config.batch_size,

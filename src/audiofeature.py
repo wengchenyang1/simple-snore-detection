@@ -1,4 +1,5 @@
 # Copyright (c) 2025, SountIO
+
 from typing import List
 
 import librosa
@@ -10,96 +11,135 @@ from src.config import FeatureConfig
 MS_PER_SEC = 1000
 
 
-def get_audio_feature(audio_path: str) -> torch.Tensor:
-    """
-    Get audio features based on the specified feature extraction method in the config.
-    Returns:
-        torch.Tensor: Extracted audio features.
-    """
-    config = FeatureConfig.get_config()
-    audio_length_sec = config.audio_length_sec
-    sample_rate = config.sample_rate
-    audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length_sec)
+class AudioFeatureExtractor:
+    def __init__(self):
+        self.config = FeatureConfig.get_config()
 
-    if config.method == "mfcc":
-        return _extract_mfcc_features(audio, config)
+    def load_config(self):
+        self.config = FeatureConfig.get_config()
 
-    if config.method == "mel_spectrogram":
-        return _extract_mel_spectrogram(audio, config)
+    def get_feature_from_file(self, audio_path: str) -> torch.Tensor:
+        """
+        Get audio features based on the specified feature extraction method in the config.
+        Returns:
+            torch.Tensor: Extracted audio features.
+        """
+        audio_length_sec = self.config.audio_length_sec
+        sample_rate = self.config.sample_rate
+        audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length_sec)
 
-    raise ValueError(f"Unsupported feature extraction method: {config.method}")
+        if self.config.method == "mfcc":
+            return self._extract_mfcc_features(audio)
 
+        if self.config.method == "mel_spectrogram":
+            return self._extract_mel_spectrogram(audio)
 
-def _extract_mfcc_features(audio: np.ndarray, config: FeatureConfig) -> torch.Tensor:
-    sample_rate = config.sample_rate
-    n_mfcc = config.n_mfcc
-    window_size_ms = config.window_size_ms
-    window_step_ms = config.window_step_ms
+        raise ValueError(f"Unsupported feature extraction method: {self.config.method}")
 
-    mfcc = librosa.feature.mfcc(
-        y=audio,
-        sr=sample_rate,
-        n_mfcc=n_mfcc,
-        n_fft=int(sample_rate * window_size_ms / MS_PER_SEC),
-        hop_length=int(sample_rate * window_step_ms / MS_PER_SEC),
-    )
+    def get_feature_from_stream(
+        self, audio_data: np.ndarray, sample_rate: int
+    ) -> torch.Tensor:
+        """
+        Get audio features from streaming audio data based on the specified feature extraction method in the config.
+        Args:
+            audio_data (np.ndarray): Audio data as a numpy array.
+            sample_rate (int): Sample rate of the audio data.
+        Returns:
+            torch.Tensor: Extracted audio features.
+        """
+        if sample_rate != self.config.sample_rate:
+            audio_data = librosa.resample(
+                audio_data, orig_sr=sample_rate, target_sr=self.config.sample_rate
+            )
+            sample_rate = self.config.sample_rate
 
-    mfcc_db = librosa.amplitude_to_db(mfcc, ref=np.max)
-    mfcc_tensor = torch.tensor(mfcc_db, dtype=torch.float32).unsqueeze(0)
-    return _normalize_db(mfcc_tensor)
+        audio_length_sec = self.config.audio_length_sec
 
+        # Ensure the audio data is the correct length
+        if len(audio_data) > sample_rate * audio_length_sec:
+            audio_data = audio_data[: sample_rate * audio_length_sec]
+        elif len(audio_data) < sample_rate * audio_length_sec:
+            padding = sample_rate * audio_length_sec - len(audio_data)
+            audio_data = np.pad(audio_data, (0, padding), "constant")
 
-def _extract_mel_spectrogram(audio: np.ndarray, config: FeatureConfig) -> torch.Tensor:
-    sample_rate = config.sample_rate
-    n_mels = config.n_mels
-    window_size_ms = config.window_size_ms
-    window_step_ms = config.window_step_ms
+        if self.config.method == "mfcc":
+            return self._extract_mfcc_features(audio_data)
 
-    mel_spectrogram = librosa.feature.melspectrogram(
-        y=audio,
-        sr=sample_rate,
-        n_mels=n_mels,
-        n_fft=int(sample_rate * window_size_ms / MS_PER_SEC),
-        hop_length=int(sample_rate * window_step_ms / MS_PER_SEC),
-    )
+        if self.config.method == "mel_spectrogram":
+            return self._extract_mel_spectrogram(audio_data)
 
-    if np.all(mel_spectrogram == 0):
-        mel_spectrogram_tensor = torch.zeros(
-            (1, n_mels, mel_spectrogram.shape[1]), dtype=torch.float32
+        raise ValueError(f"Unsupported feature extraction method: {self.config.method}")
+
+    def _extract_mfcc_features(self, audio: np.ndarray) -> torch.Tensor:
+        sample_rate = self.config.sample_rate
+        n_mfcc = self.config.n_mfcc
+        window_size_ms = self.config.window_size_ms
+        window_step_ms = self.config.window_step_ms
+
+        mfcc = librosa.feature.mfcc(
+            y=audio,
+            sr=sample_rate,
+            n_mfcc=n_mfcc,
+            n_fft=int(sample_rate * window_size_ms / MS_PER_SEC),
+            hop_length=int(sample_rate * window_step_ms / MS_PER_SEC),
         )
-    else:
-        mel_spectrogram_db = librosa.amplitude_to_db(mel_spectrogram, ref=np.max)
-        mel_spectrogram_tensor = torch.tensor(
-            mel_spectrogram_db, dtype=torch.float32
-        ).unsqueeze(0)
-        mel_spectrogram_tensor = _normalize_db(mel_spectrogram_tensor)
 
-    return mel_spectrogram_tensor
+        mfcc_db = librosa.amplitude_to_db(mfcc, ref=np.max)
+        mfcc_tensor = torch.tensor(mfcc_db, dtype=torch.float32).unsqueeze(0)
+        return self._normalize_db(mfcc_tensor)
 
+    def _extract_mel_spectrogram(self, audio: np.ndarray) -> torch.Tensor:
+        sample_rate = self.config.sample_rate
+        n_mels = self.config.n_mels
+        window_size_ms = self.config.window_size_ms
+        window_step_ms = self.config.window_step_ms
 
-def _normalize_db(tensor: torch.Tensor) -> torch.Tensor:
-    """
-    Normalize the tensor to have zero mean.
+        mel_spectrogram = librosa.feature.melspectrogram(
+            y=audio,
+            sr=sample_rate,
+            n_mels=n_mels,
+            n_fft=int(sample_rate * window_size_ms / MS_PER_SEC),
+            hop_length=int(sample_rate * window_step_ms / MS_PER_SEC),
+        )
 
-    Args:
-        tensor (torch.Tensor): Input tensor.
+        if np.all(mel_spectrogram == 0):
+            mel_spectrogram_tensor = torch.zeros(
+                (1, n_mels, mel_spectrogram.shape[1]), dtype=torch.float32
+            )
+        else:
+            mel_spectrogram_db = librosa.amplitude_to_db(mel_spectrogram, ref=np.max)
+            mel_spectrogram_tensor = torch.tensor(
+                mel_spectrogram_db, dtype=torch.float32
+            ).unsqueeze(0)
+            mel_spectrogram_tensor = self._normalize_db(mel_spectrogram_tensor)
 
-    Returns:
-        torch.Tensor: Normalized tensor.
-    """
-    mean = tensor.mean()
-    std = tensor.std()
-    return (tensor - mean) / std
+        return mel_spectrogram_tensor
+
+    def _normalize_db(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Normalize the tensor to have zero mean.
+
+        Args:
+            tensor (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Normalized tensor.
+        """
+        mean = tensor.mean()
+        std = tensor.std()
+        return (tensor - mean) / std
 
 
 def _plot_audio_features(audio_paths: List[str], title: str) -> None:
     import matplotlib.pyplot as plt
 
+    feature_extractor = AudioFeatureExtractor()
+
     plt.figure(figsize=(15, 10))
     config = FeatureConfig.get_config()
     for i, audio_path in enumerate(audio_paths):
         try:
-            features_tensor = get_audio_feature(audio_path)
+            features_tensor = feature_extractor.get_feature_from_file(audio_path)
             features_np = features_tensor.squeeze(0).numpy()
 
             window_step_ms = config.window_step_ms
