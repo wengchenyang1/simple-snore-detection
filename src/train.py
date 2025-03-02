@@ -124,7 +124,6 @@ def _evaluate_model(
 
 def _save_model(
     model: torch.nn.Module,
-    epochs: int,
     training_details: TrainingDetails,
 ) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -132,7 +131,7 @@ def _save_model(
     if not os.path.exists(subfolder):
         os.makedirs(subfolder)
 
-    ckpt_path = os.path.join(subfolder, f"snore_detection_model_epochs{epochs}.pth")
+    ckpt_path = os.path.join(subfolder, "model.pth")
     torch.save(model.state_dict(), ckpt_path)
     print(f"Model saved to folder: {subfolder}")
 
@@ -181,7 +180,7 @@ def _train_model(
         val_accuracy=val_accuracy,
     )
 
-    _save_model(model, epochs, training_details)
+    _save_model(model, training_details)
 
 
 def _cleanup_resources() -> None:
