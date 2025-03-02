@@ -5,7 +5,7 @@
         {"type": "conv2d", "filters": 32, "kernel_size": [3, 3], "activation": "relu"},
         {"type": "maxpool2d", "pool_size": [2, 2]},
         {"type": "flatten"},
-        {"type": "dense", "units": 128, "activation": "relu"},
+        {"type": "dense", "units": 32, "activation": "relu"},
         {"type": "dense", "units": 1, "activation": "sigmoid"}
     ]
 }

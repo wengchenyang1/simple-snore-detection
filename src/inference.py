@@ -55,7 +55,9 @@ def infer(
 
 
 def interpret_result(output: float) -> str:
-    return "Snore" if output > 0.5 else "No Snore"
+    threshold = 0.8
+    result = "Snore" if output > threshold else "No Snore"
+    return f"{result} (Score: {output:.2f}, Threshold: {threshold})"
 
 
 def main(model_path: str, audio_file: str) -> str:
