@@ -27,12 +27,15 @@ def infer(
     model: nn.Module,
     feature_extractor: AudioFeatureExtractor,
 ) -> float:
+    # Resample if needed.
     if sample_rate != feature_extractor.config.sample_rate:
         audio_data = librosa.resample(
             audio_data,
             orig_sr=sample_rate,
             target_sr=feature_extractor.config.sample_rate,
         )
+        sample_rate = feature_extractor.config.sample_rate
+
     audio_feature = feature_extractor.get_feature_from_stream(
         audio_data, feature_extractor.config.sample_rate
     )
@@ -69,6 +72,15 @@ def main(model_path: str, audio_file: str) -> str:
     feature_extractor = AudioFeatureExtractor()
 
     audio_data, sample_rate = librosa.load(audio_file, sr=None)
+
+    # Resample if needed, before passing to infer function
+    if sample_rate != feature_extractor.config.sample_rate:
+        audio_data = librosa.resample(
+            audio_data,
+            orig_sr=sample_rate,
+            target_sr=feature_extractor.config.sample_rate,
+        )
+        sample_rate = feature_extractor.config.sample_rate
 
     output = infer(audio_data, sample_rate, model, feature_extractor)
     return interpret_result(output)
