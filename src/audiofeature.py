@@ -35,13 +35,14 @@ def get_audio_feature(audio_path, config_path):
     audio_length_sec = config.audio_length_sec
     sample_rate = config.sample_rate
     audio, _ = librosa.load(audio_path, sr=sample_rate, duration=audio_length_sec)
-    # audio = _normalize_audio(audio)
+
     if config.method == "mfcc":
         return _extract_mfcc_features(audio, config)
-    elif config.method == "mel_spectrogram":
+
+    if config.method == "mel_spectrogram":
         return _extract_mel_spectrogram(audio, config)
-    else:
-        raise ValueError(f"Unsupported feature extraction method: {config.method}")
+
+    raise ValueError(f"Unsupported feature extraction method: {config.method}")
 
 
 def _extract_mfcc_features(audio, config):
@@ -146,16 +147,17 @@ def _plot_audio_features(audio_paths, config_path, title):
 def _example_usage():
     import os
 
-    CONFIG_PATH = "src/config.json"
-    TRAIN_DIR = os.path.join("data", "train")
+    from model import CONFIG_PATH
+
+    train_dir = os.path.join("data", "train")
 
     no_snore_files = [
-        os.path.join(TRAIN_DIR, "no_snore", f)
-        for f in os.listdir(os.path.join(TRAIN_DIR, "no_snore"))[:4]
+        os.path.join(train_dir, "no_snore", f)
+        for f in os.listdir(os.path.join(train_dir, "no_snore"))[:4]
     ]
     snore_files = [
-        os.path.join(TRAIN_DIR, "snore", f)
-        for f in os.listdir(os.path.join(TRAIN_DIR, "snore"))[:4]
+        os.path.join(train_dir, "snore", f)
+        for f in os.listdir(os.path.join(train_dir, "snore"))[:4]
     ]
 
     print(no_snore_files)

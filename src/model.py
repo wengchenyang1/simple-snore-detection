@@ -4,6 +4,8 @@ import json
 import torch
 from torch import nn
 
+CONFIG_PATH = "configs/model_config.json"
+
 
 class SnoreDetectionModel(nn.Module):
     def __init__(self, config_path):
@@ -121,7 +123,6 @@ class SnoreDetectionModel(nn.Module):
 
 
 if __name__ == "__main__":
-    CONFIG_PATH = "src/config.json"
 
     model = SnoreDetectionModel(CONFIG_PATH)
     print("\nInput Shape:", model.input_shape)

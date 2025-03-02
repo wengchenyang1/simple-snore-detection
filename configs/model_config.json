@@ -1,6 +1,6 @@
 {
     "feature_extraction": {
-        "method": "mel_spectrogram",
+        "method": "mfcc",
         "sample_rate": 16000,
         "audio_length_sec": 1,
         "n_mfcc": 40,

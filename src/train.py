@@ -9,9 +9,8 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 from src.audiofeature import get_audio_feature
-from src.model import SnoreDetectionModel
+from src.model import CONFIG_PATH, SnoreDetectionModel
 
-CONFIG_PATH = "src/config.json"
 CKPT_DIR = "ckpt"
 TRAIN_DIR = os.path.join("data", "train")
 VAL_DIR = os.path.join("data", "val")
