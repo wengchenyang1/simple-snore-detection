@@ -20,6 +20,7 @@ class FeatureConfig:
         self.window_size_ms: int = config["window_size_ms"]
         self.window_step_ms: int = config["window_step_ms"]
         self.method: str = config.get("method", "mfcc")
+        self.sample_width_bytes: int = config.get("sample_width_bytes", 2)
 
     @classmethod
     def get_config(cls, config_path: str = CONFIG_PATHS["feature"]) -> "FeatureConfig":

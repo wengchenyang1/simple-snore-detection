@@ -18,6 +18,46 @@ class AudioFeatureExtractor:
     def load_config(self):
         self.config = FeatureConfig.get_config()
 
+    def get_feature_from_raw_bytes(
+        self, raw_audio_bytes: bytes, sample_rate: int
+    ) -> torch.Tensor:
+        """
+        Get audio features from raw audio bytes.
+        """
+        config = self.config
+        sample_width_bytes = config.sample_width_bytes
+
+        if sample_width_bytes == 1:
+            audio_array = np.frombuffer(raw_audio_bytes, dtype=np.int8)
+        elif sample_width_bytes == 2:
+            audio_array = np.frombuffer(raw_audio_bytes, dtype=np.int16)
+        elif sample_width_bytes == 4:
+            audio_array = np.frombuffer(raw_audio_bytes, dtype=np.int32)
+        else:
+            raise ValueError(f"Unsupported sample width: {sample_width_bytes} bytes")
+
+        # Normalize to float32 between -1 and 1. This is a common step before librosa.
+        audio_array = audio_array.astype(np.float32) / (
+            2 ** (8 * sample_width_bytes - 1)
+        )
+
+        # Resample if needed.
+        if sample_rate != config.sample_rate:
+            audio_array = librosa.resample(
+                audio_array, orig_sr=sample_rate, target_sr=config.sample_rate
+            )
+
+        # Ensure correct length.
+        audio_array = self._ensure_correct_length(audio_array, config.sample_rate)
+
+        # Extract features.
+        if config.method == "mfcc":
+            return self._extract_mfcc_features(audio_array)
+        elif config.method == "mel_spectrogram":
+            return self._extract_mel_spectrogram(audio_array)
+        else:
+            raise ValueError(f"Unsupported feature extraction method: {config.method}")
+
     def get_feature_from_file(self, audio_path: str) -> torch.Tensor:
         """
         Get audio features based on the specified feature extraction method in the config.
@@ -56,7 +96,9 @@ class AudioFeatureExtractor:
 
         raise ValueError(f"Unsupported feature extraction method: {self.config.method}")
 
-    def _ensure_correct_length(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+    def _ensure_correct_length(
+        self, audio_data: np.ndarray, sample_rate: int
+    ) -> np.ndarray:
         """
         Ensure the audio data is the correct length by truncating or padding.
         """
